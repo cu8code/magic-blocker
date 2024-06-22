@@ -3,3 +3,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+
+.markdown {
+  div{
+    font-size: 1rem;
+  }
+  p {
+    margin-bottom: 2vh
+  }
+}
