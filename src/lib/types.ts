@@ -15,6 +15,7 @@ export interface MetaData {
     length: number;
     type: "string";
     name: string;
+    author: string;
     description: string;
     email: string;
     twitter?: string;

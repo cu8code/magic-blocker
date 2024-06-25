@@ -77,7 +77,7 @@ export class DatasetManager {
     ): Promise<DataSet> {
       const newDataset = new DataSet(id, 0, username, repository, branch, meta, lastLoadedIndex);
       this.datasets[id] = newDataset;
-      newDataset.save(); // Save the new dataset using its own save method
+      newDataset.save();
   
       try {
         const result = await new Promise<{ [key: string]: any }>((resolve) => {
