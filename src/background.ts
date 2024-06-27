@@ -1,4 +1,4 @@
-import { DatasetManager, RemoteManager, SessionManager, SiteManager } from "~lib"
+import { DatasetManager, SessionManager, SiteManager } from "~lib"
 
 console.log(`
  __       __                      __                  _______   __                      __             
@@ -18,39 +18,22 @@ $$/      $$/  $$$$$$$/  $$$$$$$ |$$/  $$$$$$$/       $$$$$$$/  $$/  $$$$$$/   $$
 async function initialize() {
   const datasetManager = await DatasetManager.load();
   const sessionManager = await SessionManager.load();
-  const remoteManager = RemoteManager.getInstance();
   const siteManager = SiteManager.getInstance();
 
   console.log(datasetManager);
-  console.log(remoteManager);
   console.log(sessionManager);
   console.log(siteManager);
 
-  if (Object.keys(datasetManager.datasets).length === 0) {
-    await remoteManager.loadDataSetsFromDefaultUrl(datasetManager);
+  if(Object.keys(datasetManager.datasets)){
+    datasetManager.fetchDataset()
   }
 
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     switch (request.action) {
       case "datasetManager.getQuestion":
-        let keys = Object.keys(datasetManager.datasets);
-        if (keys.length > 0) {
-          const datasetKey = keys.includes("data") ? "data" : keys[0]; // Ensure the correct dataset key
-          const dataset = datasetManager.datasets[datasetKey];
-          const chunk = dataset.current;
-          const randomIndex = Math.floor(Math.random() * chunk.one.length);
-          const question = chunk.one[randomIndex];
-
-          console.log("Selected question:", question);
-
-          if (question) {
-            sendResponse({ status: "success", question });
-          } else {
-            sendResponse({ status: "failed" });
-          }
-        } else {
-          sendResponse({ status: "failed" });
-        }
+        let question = await datasetManager.getQuestion();
+        console.log(question);
+        question ? sendResponse({ status: "success", result: question }) : sendResponse({ status: "error", message: "No questions available" });
         break;
 
       case "sessionManager.getTimeLeft":
@@ -85,7 +68,7 @@ async function initialize() {
         sendResponse({ status: "success" });
         break;
 
-      case "sessionManager.isRunning":
+      case "sessionManager.is_running":
         sendResponse({ status: "success", result: sessionManager.is_running() });
         break;
 
