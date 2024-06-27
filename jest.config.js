@@ -3,7 +3,7 @@ module.exports = {
     testEnvironment: 'node',
   
     // The root directory that Jest should scan for tests and modules within
-    roots: ['<rootDir>/src'],
+    roots: ['<rootDir>/test'],
   
     // A list of file extensions that Jest should look for
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
