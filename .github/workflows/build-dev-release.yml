@@ -7,6 +7,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,11 +27,14 @@ jobs:
       - name: Build Chrome Extension
         run: pnpm run build
 
-      - name: Archive ZIP artifact
+      - name: Create ZIP archive
+        run: zip -r chrome-mv3-prod.zip build/chrome-mv3-prod
+
+      - name: Archive build artifact
         uses: actions/upload-artifact@v2
         with:
           name: chrome-extension-zip
-          path: build/chrome-mv3-prod.zip
+          path: chrome-mv3-prod.zip
 
   release:
     runs-on: ubuntu-latest
@@ -38,25 +44,60 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       
       - name: Determine next tag version
         id: get_tag_version
         run: |
-          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
-          major=$(echo $latest_tag | cut -d '.' -f 1 | sed 's/v//')
-          minor=$(echo $latest_tag | cut -d '.' -f 2)
-          next_minor=$((minor + 1))
-          echo "::set-output name=tag_version::$major.$next_minor.0"
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          IFS='.' read -ra VERSION <<< "${latest_tag#v}"
+          major=${VERSION[0]}
+          minor=${VERSION[1]}
+          patch=$((VERSION[2] + 1))
+          new_tag="v$major.$minor.$patch"
+          echo "tag_version=$new_tag" >> $GITHUB_OUTPUT
       
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+      - name: Download build artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: chrome-extension-zip
+          path: build
+      
+      - name: Push new tag and create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_tag_version.outputs.tag_version }}
-          release_name: Release ${{ steps.get_tag_version.outputs.tag_version }}
-          files: |
-            build/chrome-mv3-prod.zip
-          draft: false
-          prerelease: false
+          TAG: ${{ steps.get_tag_version.outputs.tag_version }}
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          
+          # Attempt to create and push the new tag
+          if git rev-parse $TAG >/dev/null 2>&1; then
+            echo "Tag $TAG already exists locally. Force-pushing..."
+            git push https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $TAG --force
+          else
+            git tag $TAG
+            git push https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $TAG
+          fi
+
+          # Create release even if tag push fails
+          unset GITHUB_TOKEN
+          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+          gh release create $TAG --generate-notes || true
+          
+          # Upload asset to the release
+          gh release upload $TAG ./build/chrome-mv3-prod.zip --clobber
+
+      - name: Display debug information
+        run: |
+          echo "Current directory contents:"
+          ls -la
+          echo "Build directory contents:"
+          ls -la build
+          echo "Git status:"
+          git status
+          echo "Git log:"
+          git log --oneline -n 5
+          echo "Git tags:"
+          git tag -l
