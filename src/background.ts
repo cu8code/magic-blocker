@@ -33,7 +33,7 @@ async function initialize() {
       case "datasetManager.getQuestion":
         let question = await datasetManager.getQuestion();
         console.log(question);
-        question ? sendResponse({ status: "success", result: question }) : sendResponse({ status: "error", message: "No questions available" });
+        !question.error ? sendResponse({ status: "success", result: question.data }) : sendResponse({ status: "error", message: "No questions available" });
         break;
 
       case "sessionManager.getTimeLeft":

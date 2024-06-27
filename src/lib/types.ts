@@ -1,10 +1,6 @@
 export interface Data {
     question: string;
-    solution: string;
-    difficulty: "HARD" | "MEDIUM" | "EASY";
-    source?: string;
-    hints?: string;
-    coverImage?: string;
+    answer: string;
 }
 
 

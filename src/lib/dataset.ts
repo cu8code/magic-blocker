@@ -1,3 +1,4 @@
+import { url } from "inspector";
 import type { Data, MetaData } from "~lib/types";
 import { selectRandomElementFromArray } from "~utils/functions";
 
@@ -72,7 +73,7 @@ export class DataSet {
         if (this.history.three.length) {
           const id = selectRandomElementFromArray<number>(this.history.three)
           this.lastQuestionId = ["three", id]
-          const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}`;
+          const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}.json`;
           const data = (await (await fetch(url)).json()) as Data
           return { status: "sucess", data }
         }
@@ -82,7 +83,7 @@ export class DataSet {
         if (this.history.two.length) {
           const id = selectRandomElementFromArray<number>(this.history.two)
           this.lastQuestionId = ["two", id]
-          const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}`;
+          const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}.json`;
           const data = (await (await fetch(url)).json()) as Data
           return { status: "sucess", data }
         }
@@ -90,7 +91,7 @@ export class DataSet {
 
       const id = selectRandomElementFromArray<number>(this.history.one)
       this.lastQuestionId = ["one", id]
-      const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}`;
+      const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}.json`;
       const data = (await (await fetch(url)).json()) as Data
       return { status: "sucess", data }
 
@@ -98,6 +99,11 @@ export class DataSet {
 
     catch (err) {
       console.error(err)
+      console.log({
+        status: "failed",
+        error: err,
+      });
+
       return {
         status: "failed",
         error: err,
