@@ -20,7 +20,7 @@ Since the extension has not been released on any platform yet, there are two met
 2. Navigate to `chrome://extensions` in your Chrome browser.
 3. Enable `Developer mode` located at the top right-hand corner.
    ![Developer Mode](https://github.com/cu8code/magic-blocker/assets/109351887/3cb306ba-a60d-488c-b34e-36f37dbe0020)
-4. Download this file [chrome-mv3-prod.zip](https://github.com/user-attachments/files/15977210/chrome-mv3-prod.zip).
+4. Download this file [chrome-mv3-prod.zip](https://github.com/cu8code/magic-blocker/releases).
 5. Unzip the file.
 6. Click on `Load unpacked` and select the root directory of the unzipped files.
 
