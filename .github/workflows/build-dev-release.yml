@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - master
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,44 +24,39 @@ jobs:
       - name: Build Chrome Extension
         run: pnpm run build
 
-      # - name: Run test
-      #   run: pnpm run test
-          
-      - name: Archive artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: chrome-extension
-          path: build
-        env:
-          BUILD_DIR: build
-          
-      - name: Archive zip artifact
+      - name: Archive ZIP artifact
         uses: actions/upload-artifact@v2
         with:
           name: chrome-extension-zip
-          path: ${{ env.BUILD_DIR }}/chrome-mv3-prod.zip
+          path: build/chrome-mv3-prod.zip
+
   release:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/master'
     
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: chrome-extension
-          path: build
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      
+      - name: Determine next tag version
+        id: get_tag_version
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
+          major=$(echo $latest_tag | cut -d '.' -f 1 | sed 's/v//')
+          minor=$(echo $latest_tag | cut -d '.' -f 2)
+          next_minor=$((minor + 1))
+          echo "::set-output name=tag_version::$major.$next_minor.0"
+      
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v0.0.1
-          release_name: Release v0.0.1
+          tag_name: ${{ steps.get_tag_version.outputs.tag_version }}
+          release_name: Release ${{ steps.get_tag_version.outputs.tag_version }}
           files: |
-            build/*  # Adjust to include all necessary files
-          draft: false  # Change to true if you want to create a draft release
-          prerelease: false  # Change to true if this is a prerelease
-          asset_paths: |
-            ${{ steps.download-zip.outputs.artifact_path }}
+            build/chrome-mv3-prod.zip
+          draft: false
+          prerelease: false
