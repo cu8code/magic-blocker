@@ -75,7 +75,7 @@ export class DataSet {
           this.lastQuestionId = ["three", id]
           const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}.json`;
           const data = (await (await fetch(url)).json()) as Data
-          return { status: "sucess", data }
+          return { status: "success", data }
         }
       }
 
@@ -85,7 +85,7 @@ export class DataSet {
           this.lastQuestionId = ["two", id]
           const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}.json`;
           const data = (await (await fetch(url)).json()) as Data
-          return { status: "sucess", data }
+          return { status: "success", data }
         }
       }
 
@@ -93,7 +93,7 @@ export class DataSet {
       this.lastQuestionId = ["one", id]
       const url = `https://raw.githubusercontent.com/${this.username}/${this.repository}/${this.branch}/data/${id}.json`;
       const data = (await (await fetch(url)).json()) as Data
-      return { status: "sucess", data }
+      return { status: "success", data }
 
     }
 

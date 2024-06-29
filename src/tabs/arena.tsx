@@ -2,6 +2,7 @@ import "~style.css";
 import React, { useEffect, useState } from "react";
 import type { Data } from "~lib";
 import * as BetterJax from 'better-react-mathjax';
+import { createTemporaryInterval } from "~utils/functions";
 
 const Arena: React.FC = () => {
   const [data, setData] = useState<Data | null>(null);
@@ -24,19 +25,31 @@ const Arena: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      chrome.runtime.sendMessage(
-        { action: "datasetManager.getQuestion" },
-        (response: { status: string; result: Data }) => {
-          if (response.status === "success" && response.result) {
-            setData(response.result);
-            console.log(response);
-          } else {
-            console.error("Failed to fetch question data.");
+      let is_retry = false
+      const f = () => {
+        chrome.runtime.sendMessage(
+          { action: "datasetManager.getQuestion", payload: { is_retry } },
+          (response: { status: string; data: Data }) => {
+            if (response.status === "success" && response.data) {
+              setData(response.data);
+              console.log(response);
+            }
+            else if (response.status === "loading") {
+              console.log("loading");
+            }
+            else {
+              console.error("Failed to fetch question data.");
+            }
           }
-        }
-      );
+        );
+        is_retry = true
+      }
+      createTemporaryInterval(
+        f,
+        1000,
+        5000
+      )
     };
-
     fetchData();
   }, []);
 

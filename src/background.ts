@@ -1,4 +1,7 @@
+import { assert } from "console";
 import { DatasetManager, SessionManager, SiteManager } from "~lib"
+import TimedStorage from "~utils/TimeStorage";
+import { generateUniqueId } from "~utils/functions";
 
 console.log(`
  __       __                      __                  _______   __                      __             
@@ -19,21 +22,30 @@ async function initialize() {
   const datasetManager = await DatasetManager.load();
   const sessionManager = await SessionManager.load();
   const siteManager = SiteManager.getInstance();
+  const timedStorage = new TimedStorage()
 
   console.log(datasetManager);
   console.log(sessionManager);
   console.log(siteManager);
 
-  if(Object.keys(datasetManager.datasets)){
+  if (Object.keys(datasetManager.datasets)) {
     datasetManager.fetchDataset()
   }
 
   chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     switch (request.action) {
       case "datasetManager.getQuestion":
-        let question = await datasetManager.getQuestion();
-        console.log(question);
-        !question.error ? sendResponse({ status: "success", result: question.data }) : sendResponse({ status: "error", message: "No questions available" });
+        let key = "fetch-question"
+        let isRetry = request.payload.is_retry as boolean
+        assert(!(isRetry === undefined), "isRetry should not be undefined it should be a boolean")
+        if (!isRetry) {
+          timedStorage.set(key, { status: "loading" }, 3000)
+          datasetManager.getQuestion().then((e) => {
+            timedStorage.set(key, e, 3000)
+          });
+        }
+        console.log(timedStorage.get(key))
+        sendResponse(timedStorage.get(key))
         break;
 
       case "sessionManager.getTimeLeft":
