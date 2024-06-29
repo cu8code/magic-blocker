@@ -9,7 +9,7 @@ export interface Data {
  */
 export interface MetaData {
     length: number;
-    type: "string";
+    type: string;
     name: string;
     author: string;
     description: string;

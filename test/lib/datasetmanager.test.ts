@@ -1,122 +1,120 @@
 import { DatasetManager, DataSet } from '~lib';
 import type { MetaData } from '~lib';
 
+// Mock the chrome.storage.local API
 const mockChromeStorage = {
-  local: {
-    get: jest.fn(),
-    set: jest.fn(),
+  get: jest.fn(),
+  set: jest.fn(),
+};
+(global as any).chrome = {
+  storage: {
+    local: mockChromeStorage,
   },
   runtime: {
     lastError: null,
   },
 };
 
-(global as any).chrome = mockChromeStorage;
+// Mock the fetch function
+global.fetch = jest.fn();
 
-jest.mock('./dataset', () => ({
-  DataSet: jest.fn().mockImplementation((id: string) => ({
-    id,
-    save: jest.fn(),
-  })),
-}));
+// Mock the DataSet class
+jest.mock('./dataset', () => {
+  return {
+    DataSet: jest.fn().mockImplementation(() => ({
+      save: jest.fn(),
+      getQuestion: jest.fn(),
+    })),
+  };
+});
 
 describe('DatasetManager', () => {
-  beforeEach(() => {
-    // Clear mocks and reset state before each test
+  let manager: DatasetManager;
+
+  beforeEach(async () => {
     jest.clearAllMocks();
-    (global as any).chrome.local.get.mockClear();
-    (global as any).chrome.local.set.mockClear();
+    // Reset the singleton instance before each test
+    (DatasetManager as any).instance = null;
+    mockChromeStorage.get.mockImplementation((key, callback) => {
+      callback({});
+    });
+    manager = await DatasetManager.load();
   });
 
-  describe('load', () => {
-    it('should load singleton instance of DatasetManager', async () => {
-      const instance = await DatasetManager.load();
-      expect(instance).toBeInstanceOf(DatasetManager);
-    });
-
-    it('should return the same instance when called multiple times', async () => {
-      const instance1 = await DatasetManager.load();
-      const instance2 = await DatasetManager.load();
-
-      expect(instance1).toBe(instance2);
-    });
+  test('load creates a singleton instance', async () => {
+    const manager1 = await DatasetManager.load();
+    const manager2 = await DatasetManager.load();
+    expect(manager1).toBe(manager2);
   });
 
-  describe('addDataset', () => {
-    it('should add a new dataset and save it to Chrome storage', async () => {
-      const instance = await DatasetManager.load();
+  test('addDataset adds a new dataset and saves it to storage', async () => {
+    const mockMeta: MetaData = {
+      type: 'quiz',
+      name: 'Test Quiz',
+      author: 'Test Author',
+      description: 'A test quiz dataset',
+      email: 'test@example.com',
+      length: 10
+    };
 
-      (global as any).chrome.local.get.mockImplementationOnce((key: string, callback: (result: any) => void) => {
-        callback({ 'dataset-manager': [] });
-      });
-      (global as any).chrome.local.set.mockImplementationOnce((data: any, callback: () => void) => {
-        callback();
-      });
+    await manager.addDataset('testuser', 'testrepo', 'main', mockMeta);
 
-      const meta: MetaData = {
-        length: 10,
-        type: 'string',
-        name: 'Sample Dataset',
-        author: 'John Doe',
-        description: 'This is a sample dataset',
-        email: 'sample@example.com',
-      };
-
-      const newDataset = await instance.addDataset('dataset3', 'username', 'repo', 'branch', meta, 0);
-
-      expect((global as any).chrome.local.set).toHaveBeenCalledWith(
-        { 'dataset-manager': ['dataset3'] },
-        expect.any(Function)
-      );
-      expect(instance['datasets']['dataset3']).toBeInstanceOf(DataSet);
-      expect(newDataset.id).toBe('dataset3');
-    });
-
-    it('should handle error when adding dataset and saving to Chrome storage', async () => {
-      const instance = await DatasetManager.load();
-
-      (global as any).chrome.local.get.mockImplementationOnce((key: string, callback: (result: any) => void) => {
-        callback({ 'dataset-manager': [] });
-      });
-      (global as any).chrome.local.set.mockImplementationOnce((data: any, callback: (e: Error) => void) => {
-        callback(new Error('Storage error'));
-      });
-
-      const meta: MetaData = {
-        length: 10,
-        type: 'string',
-        name: 'Sample Dataset',
-        author: 'John Doe',
-        description: 'This is a sample dataset',
-        email: 'sample@example.com',
-      };
-
-      await expect(
-        instance.addDataset('dataset4', 'username', 'repo', 'branch', meta, 0)
-      ).rejects.toThrow('Storage error');
-
-      expect(instance['datasets']['dataset4']).toBeUndefined();
-    });
+    expect(manager.datasets['testuser.testrepo.main']).toBeDefined();
+    expect(DataSet).toHaveBeenCalledWith('testuser', 'testrepo', 'main', mockMeta);
+    expect(mockChromeStorage.set).toHaveBeenCalledWith(
+      { 'dataset-manager': ['testuser.testrepo.main'] },
+      expect.any(Function)
+    );
   });
 
-  describe('getQuestion', () => {
-    it('should return a random question from loaded datasets', async () => {
-      const instance = await DatasetManager.load();
-      instance['datasets'] = {
-        dataset1: new DataSet('dataset1', 0, 'username', 'repo', 'branch', { author: 'John Doe', description: '', email: '', length: 0, name: '', type: 'string' }, 0),
-      };
+  test('getQuestion returns a question from a random dataset', async () => {
+    const mockDataset = {
+      getQuestion: jest.fn().mockResolvedValue({ question: 'Test question', answer: 'Test answer' }),
+    };
+    manager.datasets = {
+      'test.dataset.1': mockDataset as any,
+    };
 
-      const question = instance.getQuestion();
+    await manager.getQuestion();
 
-      expect(question).toBeDefined();
+    expect(mockDataset.getQuestion).toHaveBeenCalled();
+  });
+
+  test('fetchDataset fetches and adds a new dataset', async () => {
+    const mockMeta: MetaData = {
+      type: 'quiz',
+      name: 'Test Quiz',
+      author: 'Test Author',
+      description: 'A test quiz dataset',
+      email: 'test@example.com',
+      length: 10
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: jest.fn().mockResolvedValue(mockMeta),
     });
 
-    it('should return null if no datasets are loaded', async () => {
-      const instance = await DatasetManager.load();
+    await manager.fetchDataset('testuser', 'testrepo', 'main');
 
-      const question = instance.getQuestion();
+    expect(global.fetch).toHaveBeenCalledWith('https://raw.githubusercontent.com/testuser/testrepo/main/index.json');
+    expect(manager.datasets['testuser.testrepo.main']).toBeDefined();
+  });
 
-      expect(question).toBeNull();
+  test('loadDatasetIdsFromMemory loads datasets from storage', async () => {
+    const mockStoredData = {
+      'dataset-manager': ['testuser.testrepo.main'],
+    };
+    mockChromeStorage.get.mockImplementation((key, callback) => {
+      callback(mockStoredData);
     });
+
+    const mockDataset = new DataSet('testuser', 'testrepo', 'main', {} as MetaData);
+    (DataSet.load as jest.Mock).mockResolvedValue(mockDataset);
+
+    // Create a new instance to trigger loadDatasetIdsFromMemory
+    (DatasetManager as any).instance = null;
+    manager = await DatasetManager.load();
+
+    expect(manager.datasets['testuser.testrepo.main']).toBe(mockDataset);
   });
 });

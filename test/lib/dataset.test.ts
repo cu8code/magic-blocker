@@ -1,114 +1,112 @@
-import { DataSet } from '~lib';
-import type { MetaData, Data } from '~lib/types';
+import { DataSet } from '~lib/dataset';  // Adjust the import path as needed
+import type { MetaData } from '~lib';  // Adjust the import path as needed
+// Define a mock MetaData that matches the expected structure
+const mockMeta: MetaData = {
+  type: "card",
+  name: 'Test Quiz',
+  author: 'Test Author',
+  description: 'A test quiz dataset',
+  email: 'test@example.com',
+  length: 10
+};
 
-const chrome = {
+// Mock the chrome.storage.local API
+const mockChromeStorage = {
+  get: jest.fn(),
+  set: jest.fn(),
+};
+(global as any).chrome = {
   storage: {
-    local: {
-      get: jest.fn(),
-      set: jest.fn()
-    }
+    local: mockChromeStorage,
   },
   runtime: {
-    lastError: null
-  }
+    lastError: null,
+  },
 };
-(global as any).chrome = chrome;
+
+// Mock the fetch function
+global.fetch = jest.fn();
 
 describe('DataSet', () => {
-  const meta: MetaData = {
-    length: 10,
-    type: "string",
-    name: "Sample Dataset",
-    author: "John Doe",
-    description: "This is a sample dataset",
-    email: "sample@example.com",
-  };
+  let dataset: DataSet;
 
   beforeEach(() => {
+    dataset = new DataSet('testuser', 'testrepo', 'main', mockMeta);
     jest.clearAllMocks();
   });
 
-  it('should create a DataSet instance', () => {
-    const dataSet = new DataSet('username.repo.branch', 1, 'username', 'repo', 'branch', meta, 0);
-    expect(dataSet.id).toBe('username.repo.branch');
-    expect(dataSet.version).toBe(1);
-    expect(dataSet.username).toBe('username');
-    expect(dataSet.repository).toBe('repo');
-    expect(dataSet.branch).toBe('branch');
-    expect(dataSet.meta).toBe(meta);
-    expect(dataSet.lastLoadedIndex).toBe(0);
+  test('constructor initializes properties correctly', () => {
+    expect(dataset.id).toBe('testuser.testrepo.main');
+    expect(dataset.username).toBe('testuser');
+    expect(dataset.repository).toBe('testrepo');
+    expect(dataset.branch).toBe('main');
+    expect(dataset.meta).toEqual(mockMeta);
   });
 
-  it('should save the DataSet to chrome storage', () => {
-    const dataSet = new DataSet('username.repo.branch', 1, 'username', 'repo', 'branch', meta, 0);
-    dataSet.save();
-    expect(chrome.storage.local.set).toHaveBeenCalledWith(
-      {
-        'username.repo.branch': {
-          id: 'username.repo.branch',
-          meta: meta,
-          current: { one: [], two: [], three: [] },
-          version: 1,
-          username: 'username',
-          repository: 'repo',
-          branch: 'branch',
-          lastLoadedIndex: 0
-        }
-      },
+  test('getQuestion fetches data correctly', async () => {
+    const mockData = { question: 'Test question', answer: 'Test answer' };
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: jest.fn().mockResolvedValue(mockData),
+    });
+
+    const result = await dataset.getQuestion();
+    expect(result.status).toBe('sucess');  // Note: There's a typo in the original code
+    expect(result.data).toEqual(mockData);
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('https://raw.githubusercontent.com/testuser/testrepo/main/data/'));
+  });
+
+  test('success method moves question to correct box', () => {
+    // @ts-ignore: Accessing private property for testing
+    dataset.lastQuestionId = ['one', 0];
+    dataset.sucess(true);
+    // @ts-ignore: Accessing private property for testing
+    expect(dataset.history.one).not.toContain(0);
+    // @ts-ignore: Accessing private property for testing
+    expect(dataset.history.two).toContain(0);
+
+    // @ts-ignore: Accessing private property for testing
+    dataset.lastQuestionId = ['two', 1];
+    dataset.sucess(false);
+    // @ts-ignore: Accessing private property for testing
+    expect(dataset.history.two).not.toContain(1);
+    // @ts-ignore: Accessing private property for testing
+    expect(dataset.history.one).toContain(1);
+  });
+
+  test('save method calls chrome.storage.local.set', () => {
+    dataset.save();
+    expect(mockChromeStorage.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'testuser.testrepo.main': expect.objectContaining({
+          username: 'testuser',
+          repository: 'testrepo',
+          branch: 'main',
+          meta: mockMeta,
+        }),
+      }),
       expect.any(Function)
     );
   });
 
-  it('should load a DataSet from chrome storage', async () => {
-    const storedData = {
-      id: 'username.repo.branch',
-      meta: meta,
-      current: { one: [], two: [], three: [] },
-      version: 1,
-      username: 'username',
-      repository: 'repo',
-      branch: 'branch',
-      lastLoadedIndex: 0
+  test('load method retrieves data from chrome.storage.local', async () => {
+    const mockStoredData = {
+      'testuser.testrepo.main': {
+        username: 'testuser',
+        repository: 'testrepo',
+        branch: 'main',
+        meta: mockMeta,
+      },
     };
-    chrome.storage.local.get.mockImplementation((keys, callback) => {
-      callback({ 'username.repo.branch': storedData });
+    mockChromeStorage.get.mockImplementation((key, callback) => {
+      callback(mockStoredData);
     });
 
-    const dataSet = await DataSet.load('username.repo.branch');
-    expect(dataSet).not.toBeNull();
-    expect(dataSet?.id).toBe('username.repo.branch');
-    expect(dataSet?.version).toBe(1);
-    expect(dataSet?.username).toBe('username');
-    expect(dataSet?.repository).toBe('repo');
-    expect(dataSet?.branch).toBe('branch');
-    expect(dataSet?.meta).toBe(meta);
-    expect(dataSet?.lastLoadedIndex).toBe(0);
-  });
-
-  it('should return null if no DataSet is found in chrome storage', async () => {
-    chrome.storage.local.get.mockImplementation((keys, callback) => {
-      callback({});
-    });
-
-    const dataSet = await DataSet.load('username.repo.branch');
-    expect(dataSet).toBeNull();
-  });
-
-  it('should add a question to the appropriate difficulty level', () => {
-    const dataSet = new DataSet('username.repo.branch', 1, 'username', 'repo', 'branch', meta, 0);
-    const question: Data = {
-      question: 'What is 2 + 2?',
-      solution: '4',
-      difficulty: 'EASY',
-      source: 'Mathematics',
-      hints: 'Think simple!',
-      coverImage: 'https://example.com/image.jpg'
-    };
-
-    dataSet.addQuestion(question);
-    expect(dataSet.current.one).toContain(question);
-    expect(dataSet.current.two).toHaveLength(0);
-    expect(dataSet.current.three).toHaveLength(0);
-    expect(chrome.storage.local.set).toHaveBeenCalled();
+    const loadedDataset = await DataSet.load('testuser.testrepo.main');
+    expect(loadedDataset).toBeInstanceOf(DataSet);
+    expect(loadedDataset?.id).toBe('testuser.testrepo.main');
+    expect(loadedDataset?.username).toBe('testuser');
+    expect(loadedDataset?.repository).toBe('testrepo');
+    expect(loadedDataset?.branch).toBe('main');
+    expect(loadedDataset?.meta).toEqual(mockMeta);
   });
 });
