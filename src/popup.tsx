@@ -57,7 +57,7 @@ function IndexPopup() {
         <FaMinus className="plasmo-cursor-pointer" onClick={handleRemoveWebsite} />
         <FaRandom />
         <ToggleButton onPause={handleClockToggle} />
-        <IoSettingsSharp />
+        <IoSettingsSharp className="plasmo-cursor-pointer" onClick={() => {window.open(chrome.runtime.getURL('options.html'))}} />
       </div>
     </div>
   );

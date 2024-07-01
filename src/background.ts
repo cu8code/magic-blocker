@@ -1,7 +1,5 @@
-import { assert } from "console";
-import { DatasetManager, SessionManager, SiteManager } from "~lib"
+import { DatasetManager, SessionManager, SiteManager, type MetaData } from "~lib"
 import TimedStorage from "~utils/TimeStorage";
-import { generateUniqueId } from "~utils/functions";
 
 console.log(`
  __       __                      __                  _______   __                      __             
@@ -28,16 +26,11 @@ async function initialize() {
   console.log(sessionManager);
   console.log(siteManager);
 
-  if (Object.keys(datasetManager.datasets)) {
-    datasetManager.fetchDataset()
-  }
-
   chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     switch (request.action) {
       case "datasetManager.getQuestion":
         let key = "fetch-question"
         let isRetry = request.payload.is_retry as boolean
-        assert(!(isRetry === undefined), "isRetry should not be undefined it should be a boolean")
         if (!isRetry) {
           timedStorage.set(key, { status: "loading" }, 3000)
           datasetManager.getQuestion().then((e) => {
@@ -107,6 +100,28 @@ async function initialize() {
       case "siteManager.getBlockedWebsites":
         const blockedWebsites = Array.from(siteManager.blockedDomains);
         sendResponse({ status: "success", result: blockedWebsites });
+        break;
+
+      case "datasetmanager.addDataset":
+        const dataset: {
+          username: string,
+          repository: string,
+          branch: string,
+          meta: MetaData
+        }  = request.payload;
+        datasetManager.addDataset(dataset.username, dataset.repository, dataset.branch, dataset.meta);
+        sendResponse({ status: "success" });
+        break;
+
+      case "datasetmanager.removeDataset":
+        const _dataset: {
+          username: string,
+          repository: string,
+          branch: string,
+          meta: MetaData
+        }  = request.payload;
+        datasetManager.removeDataset(_dataset.username,_dataset.repository,_dataset.branch);
+        sendResponse({ status: "success" });
         break;
 
       default:

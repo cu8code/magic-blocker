@@ -108,6 +108,11 @@ export class DatasetManager {
     return newDataset;
   }
 
+  async removeDataset(username: string, repository: string, branch: string){
+    const id = `${username}.${repository}.${branch}`
+    delete this.datasets[id]
+  }
+
   /**
    * Gets a random question from the dataset
    */
@@ -133,4 +138,6 @@ export class DatasetManager {
       throw error;
     }
   }
+
+ 
 }
