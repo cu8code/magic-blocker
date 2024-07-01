@@ -41,3 +41,6 @@ Since the extension has not been released on any platform yet, there are two met
 ## Contribution
 
 Feel free to explore the code, make improvements, and submit a pull request. It's recommended to create an issue beforehand as contributions involve a collaborative process. As long as the code meets the project's standards, contributions are welcomed.
+
+![Untitled-2024-07-01-1017](https://github.com/cu8code/magic-blocker/assets/109351887/fb520c35-7d2d-4f97-99b7-c3c6a772aadb)
+
