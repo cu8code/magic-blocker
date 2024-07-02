@@ -56,12 +56,9 @@ const Arena: React.FC = () => {
   const handleSubmit = () => {
     if (data) {
       if (inputValue.trim() === data.answer.trim()) {
-        setMessage("Correct!");
-        // Send signal for correct answer
         chrome.runtime.sendMessage({ action: "answer.correct" });
+        window.close()
       } else {
-        setMessage("Wrong!");
-        // Send signal for wrong answer
         chrome.runtime.sendMessage({ action: "answer.wrong" });
       }
     }

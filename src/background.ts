@@ -26,6 +26,7 @@ async function initialize() {
   console.log(sessionManager);
   console.log(siteManager);
 
+
   chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     switch (request.action) {
       case "datasetManager.getQuestion":
@@ -123,6 +124,28 @@ async function initialize() {
         datasetManager.removeDataset(_dataset.username,_dataset.repository,_dataset.branch);
         sendResponse({ status: "success" });
         break;
+      
+      case "datasetmanager.listDatasets":
+        const keys = Object.keys(datasetManager.datasets)
+        const datasets = []
+        for (const key of keys) {
+          const dataset = datasetManager.datasets[key]
+          datasets.push({
+            username: dataset.username,
+            repository: dataset.repository,
+            branch: dataset.branch
+          })
+        }
+        sendResponse({ status: "success", result: datasets });
+        break;
+      
+      case "answer.correct":
+        datasetManager.current.sucess(true)
+        sessionManager.reset()
+        break;
+      case "answer.incorrect":
+        datasetManager.current.sucess(false)
+        break;
 
       default:
         console.error(`Unknown action: ${request.action}`);
@@ -130,7 +153,7 @@ async function initialize() {
         break;
     }
 
-    return true; // Required to use sendResponse asynchronously
+    return true;
   });
 
 
@@ -139,7 +162,7 @@ async function initialize() {
     if (details.frameId !== 0) return; // Ignore subframes
 
     const url = details.url;
-    if (siteManager && siteManager.isBlocked(url)) {
+    if (siteManager && siteManager.isBlocked(url) && sessionManager.is_running()) {
       const arenaUrl = chrome.runtime.getURL('tabs/arena.html');
       await chrome.tabs.update(details.tabId, { url: arenaUrl });
     }

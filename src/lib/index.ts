@@ -7,7 +7,7 @@ export {
   DataSet,
   DatasetManager,
   SessionManager,
-  SiteManager
+  SiteManager,
 };
 
 export * from "./types"

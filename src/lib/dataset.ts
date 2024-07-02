@@ -1,4 +1,3 @@
-import { url } from "inspector";
 import type { Data, MetaData } from "~lib/types";
 import { selectRandomElementFromArray } from "~utils/functions";
 

@@ -1,6 +1,6 @@
 import { selectRandomElementFromArray } from "~utils/functions";
 import { DataSet } from "./dataset";
-import type { MetaData } from "./types";
+import type { Data, MetaData } from "./types";
 
 /**
  * A Singleton class responsible for managing datasets.
@@ -10,6 +10,7 @@ export class DatasetManager {
   _type = "DatasetManager";
   datasets: { [key: string]: DataSet };
   private static instance: DatasetManager | null = null;
+  current: DataSet | null = null;
 
   private constructor() {
     this.datasets = {};
@@ -117,7 +118,7 @@ export class DatasetManager {
    * Gets a random question from the dataset
    */
   getQuestion() {
-    const dataset = this.datasets[
+    this.current = this.datasets[
       selectRandomElementFromArray(
         Object.keys(
           this.datasets
@@ -125,7 +126,7 @@ export class DatasetManager {
       )
     ]
 
-    return dataset.getQuestion()
+    return this.current.getQuestion()
   }
 
 

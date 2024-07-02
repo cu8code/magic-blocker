@@ -17,7 +17,7 @@ function IndexPopup() {
 
   const handleAddWebsite = () => {
     console.log("Add website clicked");
-    
+
     chrome.runtime.sendMessage({ action: 'siteManager.addWebsite', websiteToAdd: currentWebsite }, (response) => {
       if (response.status === 'success') {
         console.log('Website added successfully.');
@@ -29,7 +29,7 @@ function IndexPopup() {
 
   const handleRemoveWebsite = () => {
     console.log("Remove website clicked");
-  
+
     chrome.runtime.sendMessage({ action: 'siteManager.removeWebsite', websiteToRemove: currentWebsite }, (response) => {
       if (response.status === 'success') {
         console.log('Website removed successfully.');
@@ -50,6 +50,7 @@ function IndexPopup() {
       </div>
       <div className="plasmo-flex plasmo-flex-col plasmo-w-full plasmo-items-center plasmo-justify-center plasmo-gap-2">
         <Clock running={isClockRunning} />
+        <div>{ }</div>
         <div className="plasmo-text-xs plasmo-font-mono plasmo-p-2">Minute till we torture you again</div>
       </div>
       <div className="plasmo-flex plasmo-items-center plasmo-justify-evenly plasmo-w-full plasmo-bg-stone-800 plasmo-text-xl plasmo-p-2">
@@ -57,7 +58,7 @@ function IndexPopup() {
         <FaMinus className="plasmo-cursor-pointer" onClick={handleRemoveWebsite} />
         <FaRandom />
         <ToggleButton onPause={handleClockToggle} />
-        <IoSettingsSharp className="plasmo-cursor-pointer" onClick={() => {window.open(chrome.runtime.getURL('options.html'))}} />
+        <IoSettingsSharp className="plasmo-cursor-pointer" onClick={() => { window.open(chrome.runtime.getURL('options.html')) }} />
       </div>
     </div>
   );
@@ -135,6 +136,7 @@ function Clock({ running }) {
   const [time, setTime] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [timerInterval, setTimerInterval] = useState(null);
+  const [intervalTime, setIntervalTime] = useState(40)
 
   useEffect(() => {
     chrome.runtime.sendMessage({ action: "sessionManager.getTimeLeft" }, (response) => {
@@ -142,6 +144,11 @@ function Clock({ running }) {
       setTime(initialTime);
       setIsLoaded(true);
     });
+    chrome.runtime.sendMessage({
+      action: "sessionManager.getSessionTime",
+    }, (responce) => {
+      setIntervalTime(Math.floor(responce.result / 60000));
+    })
 
     return () => {
       clearInterval(timerInterval);
@@ -182,11 +189,16 @@ function Clock({ running }) {
   const seconds = Math.floor((time % 60000) / 1000);
 
   return (
-    <div className="plasmo-flex plasmo-items-center">
+    <div className="plasmo-flex-col ">
       {isLoaded ? (
         <>
-          <div className="plasmo-text-9xl">{minutes}</div>
-          <div className="plasmo-text-2xl">{seconds}s</div>
+          <div className="plasmo-flex plasmo-items-center ">
+            <div className="plasmo-text-9xl">{minutes}</div>
+            <div className="plasmo-text-2xl">{seconds}s</div>
+          </div>
+          <div className="plasmo-text-sm plasmo-text-stone-500 m-auto plasmo-w-full plasmo-text-center">
+            <div>{intervalTime} min</div>
+          </div>
         </>
       ) : (
         <div>Loading...</div>

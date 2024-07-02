@@ -122,7 +122,8 @@ export class SessionManager {
 
         if (this.timeLeft <= 0) {
           this.pause(); // Use pause instead of clearInterval directly
-          this.reset(); // Assuming reset method resets the timer state
+          // this.reset(); // Assuming reset method resets the timer state
+          this.isRunning = false
         }
       }
     }, 1000);  // Set interval to 1000 milliseconds (1 second)
