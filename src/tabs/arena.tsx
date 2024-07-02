@@ -31,10 +31,10 @@ const Arena: React.FC = () => {
         chrome.runtime.sendMessage(
           { action: "datasetManager.getQuestion", payload: { is_retry } },
           (response: { status: string; data: Data }) => {
-            if (response.status === "success" && response.data) {
+            if (response?.status === "success" && response.data) {
               setData(response.data);
               console.log(response);
-            } else if (response.status === "loading") {
+            } else if (response?.status === "loading") {
               console.log("loading");
             } else {
               console.error("Failed to fetch question data.");

@@ -1,4 +1,3 @@
-
 /**
  * A Singleton class responsible for keeping track of user session of our app.
  */
@@ -9,7 +8,7 @@ export class SessionManager {
   private sessionTime: number | null = 25 * 60 * 1000; // Time in millis
   private timeLeft: number | null = 25 * 60 * 1000; // Time in millis
   private lastUpdateTime: number | null = Date.now();
-  private timerInterval = null; // New property to track the interval
+  private timerInterval: NodeJS.Timeout | null = null; // New property to track the interval
   private isRunning: boolean = false; // New property to track if the timer is running
 
   private constructor() { }
@@ -41,6 +40,7 @@ export class SessionManager {
       }
 
       SessionManager.instance = manager;
+      await manager.save();  // Ensure initial state is saved
       manager.startTimer();
 
       return manager;
@@ -53,7 +53,7 @@ export class SessionManager {
   /**
    * Save the Session Manager into the memory using storage API from chrome.
    */
-  save() {
+  async save(): Promise<void> {
     const data = {
       numberOfSession: this.numberOfSession,
       sessionTime: this.sessionTime,
@@ -61,12 +61,16 @@ export class SessionManager {
       lastUpdateTime: this.lastUpdateTime,
     };
 
-    chrome.storage.local.set({ 'session-manager': data }, () => {
-      if (chrome.runtime.lastError) {
-        console.error(`Error saving SessionManager: ${chrome.runtime.lastError}`);
-      } else {
-        console.log('SessionManager saved successfully.');
-      }
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set({ 'session-manager': data }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(`Error saving SessionManager: ${chrome.runtime.lastError}`);
+          reject(chrome.runtime.lastError);
+        } else {
+          console.log('SessionManager saved successfully.');
+          resolve();
+        }
+      });
     });
   }
 
@@ -74,10 +78,9 @@ export class SessionManager {
    * Change the sessionTime.
    * @param {number} n - Time in minutes.
    */
-  setSessionTime(n: number) {
+  async setSessionTime(n: number) {
     this.sessionTime = n * 60 * 1000; // Convert minutes to milliseconds
-    this.reset();
-    this.save();
+    await this.reset();
   }
 
   getSessionTime() {
@@ -95,10 +98,10 @@ export class SessionManager {
   /**
    * Reset the time left.
    */
-  reset() {
+  async reset() {
     this.timeLeft = this.sessionTime;
     this.lastUpdateTime = Date.now();
-    this.save();
+    await this.save();
   }
 
   /**
@@ -112,51 +115,53 @@ export class SessionManager {
     this.lastUpdateTime = Date.now(); // Initialize lastUpdateTime when starting the timer
     this.isRunning = true; // Mark the timer as running
 
-    this.timerInterval = setInterval(() => { // Use window.setInterval for TypeScript compatibility
+    this.timerInterval = setInterval(async () => {
       const now = Date.now();
       if (this.lastUpdateTime && this.timeLeft !== null) {
         const delta = now - this.lastUpdateTime; // Time in milliseconds
         this.timeLeft = Math.max(this.timeLeft - delta, 0); // Ensure timeLeft doesn't go negative
         this.lastUpdateTime = now;
-        this.save(); // Assuming save method updates the necessary state or storage
+
+        // Save less frequently, e.g., every 10 seconds
+        if (this.timeLeft % 10000 === 0) {
+          await this.save();
+        }
 
         if (this.timeLeft <= 0) {
-          this.pause(); // Use pause instead of clearInterval directly
-          // this.reset(); // Assuming reset method resets the timer state
-          this.isRunning = false
+          await this.pause(); // Use pause instead of clearInterval directly
+          this.isRunning = false;
         }
       }
     }, 1000);  // Set interval to 1000 milliseconds (1 second)
-
   }
 
   /**
    * Pause the timer.
    */
-  pause() {
+  async pause() {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
       this.isRunning = false; // Mark the timer as not running
-      this.save();
+      await this.save();
     }
   }
 
   /**
    * Toggle the timer between running and paused states.
    */
-  toggle() {
+  async toggle() {
     if (this.isRunning) {
-      this.pause();
+      await this.pause();
     } else {
       this.startTimer();
     }
   }
 
   /**
-   * is running
+   * Check if the timer is running.
    */
-  is_running() {
-    return this.isRunning
+  is_running(): boolean {
+    return this.isRunning;
   }
 }
