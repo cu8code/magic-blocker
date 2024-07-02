@@ -143,6 +143,7 @@ async function initialize() {
         datasetManager.current.sucess(true)
         sessionManager.reset()
         break;
+
       case "answer.incorrect":
         datasetManager.current.sucess(false)
         break;
@@ -162,7 +163,7 @@ async function initialize() {
     if (details.frameId !== 0) return; // Ignore subframes
 
     const url = details.url;
-    if (siteManager && siteManager.isBlocked(url) && sessionManager.is_running()) {
+    if (siteManager && siteManager.isBlocked(url) && !sessionManager.is_running()) {
       const arenaUrl = chrome.runtime.getURL('tabs/arena.html');
       await chrome.tabs.update(details.tabId, { url: arenaUrl });
     }

@@ -1,4 +1,4 @@
-import { FaGithub, FaMinus, FaRandom, FaTwitter, FaPlus, FaPause, FaPlay } from "react-icons/fa";
+import { FaGithub, FaMinus, FaTwitter, FaPlus, FaPause, FaPlay } from "react-icons/fa";
 import { IoSettingsSharp } from "react-icons/io5";
 
 import "~style.css";
@@ -56,7 +56,6 @@ function IndexPopup() {
       <div className="plasmo-flex plasmo-items-center plasmo-justify-evenly plasmo-w-full plasmo-bg-stone-800 plasmo-text-xl plasmo-p-2">
         <FaPlus className="plasmo-cursor-pointer" onClick={handleAddWebsite} />
         <FaMinus className="plasmo-cursor-pointer" onClick={handleRemoveWebsite} />
-        <FaRandom />
         <ToggleButton onPause={handleClockToggle} />
         <IoSettingsSharp className="plasmo-cursor-pointer" onClick={() => { window.open(chrome.runtime.getURL('options.html')) }} />
       </div>
