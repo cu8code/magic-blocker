@@ -6,47 +6,57 @@ on:
   pull_request:
     branches:
       - master
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
       - name: Install pnpm
         run: npm i pnpm -g
-
       - name: Install dependencies
         run: pnpm install
-          
       - name: Build Chrome Extension
         run: pnpm run build
-
-      - name: Create ZIP archive
-        run: zip -r chrome-mv3-prod.zip build/chrome-mv3-prod
-
-      - name: Archive build artifact
+      - name: Build Firefox Extension
+        run: pnpm run build --target=firefox-mv2
+      - name: Create Chrome ZIP archive
+        run: |
+          cd build/chrome-mv3-prod
+          zip -r chrome-mv3-prod.zip *
+      - name: Create Firefox ZIP archive
+        run: |
+          cd build/firefox-mv2-prod
+          zip -r firefox-mv2-prod.zip *
+      - name: Archive Chrome build artifact
         uses: actions/upload-artifact@v2
         with:
           name: chrome-extension-zip
-          path: chrome-mv3-prod.zip
+          path: build/chrome-mv3-prod/chrome-mv3-prod.zip
+      - name: Archive Firefox build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: firefox-extension-zip
+          path: build/firefox-mv2-prod/firefox-mv2-prod.zip
+      - name: Upload build logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-logs
+          path: |
+            .plasmo/build-logs/chrome-mv3-prod.log
+            .plasmo/build-logs/firefox-mv2-prod.log
 
   release:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/master'
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      
       - name: Determine next tag version
         id: get_tag_version
         run: |
@@ -57,37 +67,52 @@ jobs:
           patch=$((VERSION[2] + 1))
           new_tag="v$major.$minor.$patch"
           echo "tag_version=$new_tag" >> $GITHUB_OUTPUT
-      
-      - name: Download build artifact
+      - name: Download build artifacts
         uses: actions/download-artifact@v2
         with:
-          name: chrome-extension-zip
           path: build
-      
-      - name: Push new tag and create release
+     - name: Push new tag and create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.get_tag_version.outputs.tag_version }}
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          
-          # Attempt to create and push the new tag
+
+          # Attempt to create and push the new tag if it doesn't exist
           if git rev-parse $TAG >/dev/null 2>&1; then
-            echo "Tag $TAG already exists locally. Force-pushing..."
-            git push https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $TAG --force
+            echo "Tag $TAG already exists locally."
           else
             git tag $TAG
             git push https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git $TAG
           fi
 
-          # Create release even if tag push fails
-          unset GITHUB_TOKEN
-          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-          gh release create $TAG --generate-notes || true
-          
-          # Upload asset to the release
-          gh release upload $TAG ./build/chrome-mv3-prod.zip --clobber
+          # Authenticate GitHub CLI
+          echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
+
+          # Check if the release already exists
+          if gh release view $TAG > /dev/null 2>&1; then
+            echo "Release $TAG already exists."
+          else
+            # Create the release
+            gh release create $TAG --generate-notes
+          fi
+
+          # Function to upload asset if it exists
+          upload_asset() {
+            local file_path=$1
+            if [[ -f $file_path ]]; then
+              gh release upload $TAG $file_path --clobber
+            else
+              echo "File $file_path does not exist. Skipping..."
+            fi
+          }
+
+          # Upload assets to the release
+          upload_asset ./build/chrome-extension-zip/chrome-mv3-prod.zip
+          upload_asset ./build/firefox-extension-zip/firefox-mv2-prod.zip
+          upload_asset ./build/build-logs/chrome-mv3-prod.log
+          upload_asset ./build/build-logs/firefox-mv2-prod.log
 
       - name: Display debug information
         run: |
