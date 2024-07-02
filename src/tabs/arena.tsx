@@ -2,6 +2,7 @@ import "~style.css";
 import React, { useEffect, useState } from "react";
 import type { Data } from "~lib";
 import * as BetterJax from 'better-react-mathjax';
+import DOMPurify from 'dompurify';
 import { createTemporaryInterval } from "~utils/functions";
 
 const Arena: React.FC = () => {
@@ -25,7 +26,7 @@ const Arena: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      let is_retry = false
+      let is_retry = false;
       const f = () => {
         chrome.runtime.sendMessage(
           { action: "datasetManager.getQuestion", payload: { is_retry } },
@@ -33,22 +34,16 @@ const Arena: React.FC = () => {
             if (response.status === "success" && response.data) {
               setData(response.data);
               console.log(response);
-            }
-            else if (response.status === "loading") {
+            } else if (response.status === "loading") {
               console.log("loading");
-            }
-            else {
+            } else {
               console.error("Failed to fetch question data.");
             }
           }
         );
-        is_retry = true
-      }
-      createTemporaryInterval(
-        f,
-        1000,
-        5000
-      )
+        is_retry = true;
+      };
+      createTemporaryInterval(f, 1000, 5000);
     };
     fetchData();
   }, []);
@@ -57,7 +52,7 @@ const Arena: React.FC = () => {
     if (data) {
       if (inputValue.trim() === data.answer.trim()) {
         chrome.runtime.sendMessage({ action: "answer.correct" });
-        window.close()
+        window.close();
       } else {
         chrome.runtime.sendMessage({ action: "answer.wrong" });
       }
@@ -68,6 +63,11 @@ const Arena: React.FC = () => {
     return <div>Loading...</div>;
   }
 
+  const sanitizedQuestion = DOMPurify.sanitize(data.question, {
+    FORBID_TAGS: ['style', 'script', 'link'],
+    FORBID_ATTR: ['style', 'onerror', 'onclick', 'onload']
+  });
+
   return (
     <>
       <div className="markdown plasmo-bg-gray-200 plasmo-p-10 h-screen">
@@ -75,18 +75,14 @@ const Arena: React.FC = () => {
           <p className="plasmo-text-gray-400">Refresh to get new question</p>
           <BetterJax.MathJaxContext src="/assets/mjex.js" config={config}>
             <BetterJax.MathJax>
-              <div dangerouslySetInnerHTML={{
-                __html: data.question
-              }}></div>
+              <div dangerouslySetInnerHTML={{ __html: sanitizedQuestion }}></div>
             </BetterJax.MathJax>
           </BetterJax.MathJaxContext>
-          <div className="plasmo-flex plasmo-gap-5 plasmo-max-w-4xl plasmo- w-full plasmo-m-auto m-auto plasmo-items-center plasmo-justify-center" >
+          <div className="plasmo-flex plasmo-gap-5 plasmo-max-w-4xl plasmo-w-full plasmo-m-auto plasmo-items-center plasmo-justify-center">
             <input
               className="plasmo-p-1"
               placeholder="type the answer here"
               type="text"
-              width={100}
-              height={100}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
             />
